@@ -1,0 +1,72 @@
+[
+    {
+        "id": 1,
+        "name": "/battery",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 2,
+        "name": "/temperature",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 3,
+        "name": "/humidity",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 4,
+        "name": "/pwr/on",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 5,
+        "name": "/pwr/off",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 6,
+        "name": "/plant/coord",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 7,
+        "name": "/turn",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 8,
+        "name": "/turn/leftRight",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 9,
+        "name": "/weed/coord",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 10,
+        "name": "/weed/count",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 11,
+        "name": "/weed/boundingBox",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 12,
+        "name": "/weed/confidence",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 13,
+        "name": "/weed/isTrue",
+        "message_type": "std_msgs"
+    },
+    {
+        "id": 14,
+        "name": "/odom",
+        "message_type": "std_msgs"
+    }
+]

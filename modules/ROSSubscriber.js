@@ -1,24 +1,9 @@
 import ROSLIB from 'roslib';
-import fs from "fs"
-
-const ros = new ROSLIB.Ros({
-    url: 'ws://localhost:9090'
-});
-/*
-ros.on('connection', () => {
-    console.log('Connected');
-});
-
-ros.on('error', (error) => {
-    console.log('Connection Error', error);
-});
-
-ros.on('close', () => {
-    console.log('Closed');
-});*/
-
+import { ROSConnect } from './ROSConnect';
 
 export const ROSMessages = () => {
+
+    const ros = ROSConnect()
 
     const jsonContent = fs.readFileSync("./data/ROSTopicNames.json", 'utf-8');
     const ROSTopicNames = JSON.parse(jsonContent);

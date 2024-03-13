@@ -1,23 +1,20 @@
 import ROSLIB from 'roslib';
+import { ROSConnect } from './ROSConnect';
 
-const ROSMessageSender = (msgTopic, messageType, messageData)  => {
+export default ROSMessageSender = (msgTopic, messageType, messageData) => {
   
-    const ros = new ROSLIB.Ros({
-      url: 'ws://localhost:9090'
-    });
+  const ros = ROSConnect()
 
-    const sendMsg= new ROSLIB.Topic({
-      ros: ros,
-      name: msgTopic,
-      messageType: messageType
-    });
+  const sendMsg = new ROSLIB.Topic({
+    ros: ros,
+    name: msgTopic,
+    messageType: messageType
+  });
 
-    const message = new ROSLIB.Message({
-      data: messageData
-    });
+  const message = new ROSLIB.Message({
+    data: messageData
+  });
 
-    sendMsg.publish(message);
+  sendMsg.publish(message);
 
 };
-
-export default rosMessageSender

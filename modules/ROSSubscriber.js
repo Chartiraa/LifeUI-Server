@@ -1,5 +1,5 @@
 import ROSLIB from 'roslib';
-import { ROSConnect } from './ROSConnect';
+import { ROSConnect } from './ROSConnect.js';
 
 export const ROSMessages = () => {
 

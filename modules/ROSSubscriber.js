@@ -1,32 +1,24 @@
 import ROSLIB from 'roslib';
-import { ROSConnect } from './ROSConnect.js';
 
-export const ROSMessages = () => {
+export const getROSMessage = (topic) => {
 
-    const ros = ROSConnect()
-
-    const jsonContent = fs.readFileSync("./data/ROSTopicNames.json", 'utf-8');
-    const ROSTopicNames = JSON.parse(jsonContent);
-    const messages = {}
-
-    ROSTopicNames.forEach((name, message_type) => {
-
-        const connect = new ROSLIB.Topic({
-            ros,
-            name: name,
-            messageType: message_type,
-        });
-
-        connect.subscribe((message) => {
-            console.log(message)
-            console.log("message")
-
-            messages.push({ name: name, message: message });
-        });
-
+    const ros = new ROSLIB.Ros({
+        url: 'ws://localhost:9090'
     });
 
-    return JSON.stringify(messages)
+    console.log(topic.name)
+    console.log(topic.message_type)
+
+    const connect = new ROSLIB.Topic({
+        ros,
+        name: topic.name,
+        messageType: topic.message_type,
+    });
+
+    connect.subscribe((message) => {
+        console.log(message)
+        console.log("message")
+        return message
+    });
 
 }
-

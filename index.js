@@ -1,7 +1,8 @@
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { ROSMessages } from "./modules/ROSSubscriber.js";
+import fs from 'fs'
+import { ROSConnectionStatus, getROSMessage } from "./modules/ROSConnect.js";
 
 const app = express();
 const port = 5000;
@@ -14,15 +15,16 @@ app.listen(port, () => {
   console.log("Server ayağa kalktı")
 })
 
+ROSConnectionStatus()
+
+const jsonContent = fs.readFileSync("data/ROSTopicNames.json", 'utf-8');
+const ROSTopicNames = JSON.parse(jsonContent);
 
 app.get("/", (req, res) => {
-  if (ROSMessages() == '{}') {
-    res.send("Back-end çalıştııııı!");
-  }
-  else {
-    console.log(ROSMessages())
-    res.send(ROSMessages())
-  }
+  ROSTopicNames.forEach((topic) => {
+    console.log(getROSMessage(topic))
+    console.log(topic)
+  });
 })
 
 app.post('/', (req, res) => {

@@ -3,15 +3,5 @@
         "id": 1,
         "name": "/battery",
         "message_type": "std_msgs/String"
-    },
-    {
-        "id": 2,
-        "name": "/temperature",
-        "message_type": "std_msgs/String"
-    },
-    {
-        "id": 3,
-        "name": "/humidity",
-        "message_type": "std_msgs/String"
     }
 ]

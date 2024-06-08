@@ -1,61 +1,60 @@
-import express from "express";
-import bodyParser from "body-parser";
-import cors from "cors";
-import fs from 'fs'
-import { ROSConnectionStatus, getROSMessage } from "./modules/ROSConnect.js";
+import { Server } from "socket.io";
+import rosnodejs from 'rosnodejs';
 
-const app = express();
-const port = 5000;
-
-app.use(cors());
-app.use(bodyParser.json({ limit: "30mb", extended: true }));
-app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
-
-app.listen(port, () => {
-  console.log("Server ayağa kalktı")
-})
-
-ROSConnectionStatus()
-
-const jsonContent = fs.readFileSync("data/ROSTopicNames.json", 'utf-8');
-const ROSTopicNames = JSON.parse(jsonContent);
-
-app.get("/", (req, res) => {
-  ROSTopicNames.forEach((topic) => {
-    console.log(getROSMessage(topic))
-    console.log(topic)
-  });
-})
-
-app.post('/', (req, res) => {
-  const requestData = req.body;
-  console.log('Gelen Veri:', requestData);
-
-  res.json({ message: 'İstek başarılı, veri alındı.' });
+const io = new Server({
+  cors: {
+    origin: "*"
+  }
 });
 
-app.post('/joystick', (req, res) => {
-  const requestData = req.body;
-  console.log('Joystick Vektörü:', requestData);
-  res.json({ message: 'İstek başarılı, veri alındı.' });
-});
+var navbarData = { temperature: 0, humidity: 0, battery: 0 };
 
-app.post('/autonomousState', (req, res) => {
-  const requestData = req.body;
-  console.log('Otonom Sürüş:', requestData);
-  res.json({ message: 'İstek başarılı, veri alındı.' });
-});
+NavbarTopics();
 
-app.post('/speedFactor', (req, res) => {
-  const requestData = req.body;
-  console.log('Hız Çarpanı:', requestData);
-  res.json({ message: 'İstek başarılı, veri alındı.' });
-});
+io.on("connection", (socket) => {
+  console.log("Baglanti kuruldu - server");
+  
+  console.log(socket.id);
 
-app.post('/turnType', (req, res) => {
-  const requestData = req.body;
-  console.log('Dönüş Türü:', requestData);
-  res.json({ message: 'İstek başarılı, veri alındı.' });
+  socket.on("Joystick", (data) => {
+    console.log(data);
+  })
+
+  socket.on("Stop", () => {
+    console.log("Stop");
+  })
 });
 
 
+setInterval(() => {
+  io.emit("Navbar", navbarData);
+}, 1000);
+
+io.listen(5000);
+
+function NavbarTopics() {
+
+  rosnodejs.initNode('/UI')
+    .then((rosNode) => {
+      let temperature = rosNode.subscribe('/temperature', 'std_msgs/String',
+        (data) => {
+          //rosnodejs.log.info('Temperature: [' + data.data + ']');
+          navbarData.temperature = data.data;
+        }
+      );
+
+      let humidity = rosNode.subscribe('/humidity', 'std_msgs/String',
+        (data) => {
+          //rosnodejs.log.info('Humidity: [' + data.data + ']');
+          navbarData.humidity = data.data;
+        }
+      );
+
+      let battery = rosNode.subscribe('/battery', 'std_msgs/String',
+        (data) => {
+          //rosnodejs.log.info('Battery: [' + data.data + ']');
+          navbarData.battery = data.data;
+        }
+      );
+    });
+}

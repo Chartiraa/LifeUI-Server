@@ -8,16 +8,23 @@ const io = new Server({
 });
 
 var navbarData = { temperature: 0, humidity: 0, battery: 0 };
+var joystickData = { x: '0', y: '0' };
 
 NavbarTopics();
 
 io.on("connection", (socket) => {
   console.log("Baglanti kuruldu - server");
-  
+
   console.log(socket.id);
 
   socket.on("Joystick", (data) => {
-    console.log(data);
+
+    joystickData = data;
+    const nh = rosnodejs.nh;
+
+    let joystick = nh.advertise('/Joystick', 'std_msgs/String');
+    joystick.publish({ data: JSON.stringify(joystickData) });
+    //console.log(data);
   })
 
   socket.on("Stop", () => {
@@ -56,5 +63,8 @@ function NavbarTopics() {
           navbarData.battery = data.data;
         }
       );
+
+
+
     });
 }

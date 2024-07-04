@@ -24,11 +24,31 @@ io.on("connection", (socket) => {
 
     let joystick = nh.advertise('/Joystick', 'std_msgs/String');
     joystick.publish({ data: JSON.stringify(joystickData) });
-    //console.log(data);
+    console.log(data);
   })
 
   socket.on("Stop", () => {
     console.log("Stop");
+  })
+
+  socket.on("autonomousDrive", (data) => {
+    console.log(data);
+  })
+
+  socket.on("turnType", (data) => {
+    console.log(data);
+  })
+
+  socket.on("cameraSelect", (data) => {
+    console.log(data);
+  })
+
+  socket.on("speedFactor", (data) => {
+    console.log(data);
+  })
+
+  socket.on("autonomousState", (data) => {
+    console.log(data);
   })
 });
 

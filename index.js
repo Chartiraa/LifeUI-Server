@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import rosnodejs from 'rosnodejs';
+import rclnodejs from 'rclnodejs';
 
 const io = new Server({
   cors: {
@@ -20,10 +20,12 @@ io.on("connection", (socket) => {
   socket.on("Joystick", (data) => {
 
     joystickData = data;
-    const nh = rosnodejs.nh;
 
-    let joystick = nh.advertise('/Joystick', 'std_msgs/String');
-    joystick.publish({ data: JSON.stringify(joystickData) });
+      const node = rclnodejs.createNode('publisher_example_node');
+      const publisher = node.createPublisher('std_msgs/msg/String', 'testmsgs');
+      publisher.publish({ data: JSON.stringify(joystickData) });
+      rclnodejs.spin(node);
+
     console.log(data);
   })
 
@@ -60,31 +62,24 @@ setInterval(() => {
 io.listen(5000);
 
 function NavbarTopics() {
+  rclnodejs.init().then(() => {
+    const node = rclnodejs.createNode('UI_Sensor_Subcriber');
 
-  rosnodejs.initNode('/UI')
-    .then((rosNode) => {
-      let temperature = rosNode.subscribe('/temperature', 'std_msgs/String',
-        (data) => {
-          //rosnodejs.log.info('Temperature: [' + data.data + ']');
-          navbarData.temperature = data.data;
-        }
-      );
-
-      let humidity = rosNode.subscribe('/humidity', 'std_msgs/String',
-        (data) => {
-          //rosnodejs.log.info('Humidity: [' + data.data + ']');
-          navbarData.humidity = data.data;
-        }
-      );
-
-      let battery = rosNode.subscribe('/battery', 'std_msgs/String',
-        (data) => {
-          //rosnodejs.log.info('Battery: [' + data.data + ']');
-          navbarData.battery = data.data;
-        }
-      );
-
-
-
+    node.createSubscription('std_msgs/msg/String', 'temperature', (msg) => {
+      navbarData.temperature = msg.data;
+      console.log(`Received message: ${typeof msg}`, msg);
     });
+
+    node.createSubscription('std_msgs/msg/String', 'humidity', (msg) => {
+      navbarData.humidity = msg.data;
+      console.log(`Received message: ${typeof msg}`, msg);
+    });
+
+    node.createSubscription('std_msgs/msg/String', 'battery', (msg) => {
+      navbarData.battery = msg.data;
+      console.log(`Received message: ${typeof msg}`, msg);
+    });
+
+    rclnodejs.spin(node);
+  });
 }

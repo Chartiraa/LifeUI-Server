@@ -23,14 +23,13 @@ const joystickRecorder = new DataRecorder(`./logs/${formattedDate}`, 'JoystickDa
 const generalRecorder = new DataRecorder(`./logs/${formattedDate}`, 'GeneralData.txt')
 
 var navbarData = { temperature: 0, humidity: 0, battery: 0, connection: 'waiting...' };
-var joystickData = { x: '0', y: '0' };
+var joystickData = { x: '0', y: '0', 'plow': '0', 'speedFactor': '30' };
 
 let lastMessageTime = Date.now();
 const timeout = 2000; // 5 saniye
 
 // Global node reference
 let globalNode;
-
 
 
 async function initRclNode() {
@@ -103,8 +102,20 @@ io.on("connection", (socket) => {
   });
 
   socket.on("speedFactor", (data) => {
-    console.log(data);
+    joystickData.speedFactor = data
+    console.log(joystickData);
+    io.emit("Joystick", joystickData);
     generalRecorder.recordData(`Speed Factor: ${data}`);
+  });
+
+  socket.on("Load", (data) => {
+    io.emit("LoadUI", data);
+  });
+
+  socket.on("plow", (data) => {
+    joystickData.plow = data;
+    console.log(joystickData);
+    io.emit("Joystick", joystickData);
   });
 
   socket.on('executeCommand', (command) => {

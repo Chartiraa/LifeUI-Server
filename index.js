@@ -23,7 +23,8 @@ const joystickRecorder = new DataRecorder(`./logs/${formattedDate}`, 'JoystickDa
 const generalRecorder = new DataRecorder(`./logs/${formattedDate}`, 'GeneralData.txt')
 
 var navbarData = { temperature: 0, humidity: 0, battery: 0, connection: 'waiting...' };
-var joystickData = { x: '0', y: '0', 'plow': '0', 'speedFactor': '30' };
+var speedF = 30;
+var joystickData = { x: '0', y: '0', z: '0', 'plow': '0', 'speedF': speedF, 'turnType':  0};
 
 let lastMessageTime = Date.now();
 const timeout = 2000; // 5 saniye
@@ -65,15 +66,24 @@ io.on("connection", (socket) => {
   console.log(socket.id);
 
   socket.on("Joystick", (data) => {
-    joystickData = data;
+    if (data.x !== undefined){
+      joystickData.x = data.x
+    }
+    if (data.y !== undefined){
+      joystickData.y = data.y
+    }
+    if (data.z !== undefined){
+      joystickData.z = data.z
+    }
+
     joystickRecorder.recordJoystick(data);
     io.emit("Joystick", joystickData);
 
     // Publisher
-    const publisher = globalNode.createPublisher('std_msgs/msg/String', 'testmsgs');
+    const publisher = globalNode.createPublisher('std_msgs/msg/String', 'joystickData');
     publisher.publish({ data: JSON.stringify(joystickData) });
 
-    console.log(data);
+    console.log(joystickData);
   });
 
   socket.on("Stop", () => {
@@ -93,6 +103,7 @@ io.on("connection", (socket) => {
 
   socket.on("turnType", (data) => {
     console.log(data);
+    joystickData.turnType = data
     generalRecorder.recordData(`Turn Type: ${data}`);
   });
 
@@ -102,7 +113,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("speedFactor", (data) => {
-    joystickData.speedFactor = data
+    speedF = data
+    joystickData.speedF = data
     console.log(joystickData);
     io.emit("Joystick", joystickData);
     generalRecorder.recordData(`Speed Factor: ${data}`);
@@ -142,16 +154,16 @@ io.on("connection", (socket) => {
         });
       });
     }).connect({
-      host: '192.168.1.19',
+      host: '192.168.122.171',
       port: 22,
-      username: 'jetson',
-      password: 'jetson'
+      username: 'csa',
+      password: '236541'
     });
   });
 });
 
 setInterval(() => {
-  //io.emit("Navbar", navbarData);
+  io.emit("Navbar", navbarData);
 }, 1000);
 
 setInterval(() => {

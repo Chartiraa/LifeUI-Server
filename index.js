@@ -31,9 +31,11 @@ const timeout = 2000; // 5 saniye
 
 // Global node reference
 let globalNode;
+rclnodejs.init();
+globalNode = rclnodejs.createNode('UI_Sensor_Subcriber');
 
 
-async function initRclNode() {
+/*async function initRclNode() {
   await rclnodejs.init();
   globalNode = rclnodejs.createNode('UI_Sensor_Subcriber');
 
@@ -59,20 +61,20 @@ async function initRclNode() {
   });
 
   rclnodejs.spin(globalNode);
-}
+}*/
 
 io.on("connection", (socket) => {
   console.log("Baglanti kuruldu - server");
   console.log(socket.id);
 
   socket.on("Joystick", (data) => {
-    if (data.x !== undefined){
+    if (data.x !== undefined && data.x !== null){
       joystickData.x = data.x
     }
-    if (data.y !== undefined){
+    if (data.y !== undefined && data.y !== null){
       joystickData.y = data.y
     }
-    if (data.z !== undefined){
+    if (data.z !== undefined && data.z !== null){
       joystickData.z = data.z
     }
 
@@ -184,6 +186,6 @@ server.listen(4000, () => {
 });
 
 // Initialize ROS 2 node
-initRclNode().catch((err) => {
+/*initRclNode().catch((err) => {
   console.error('Failed to initialize ROS 2 node:', err);
-});
+});*/

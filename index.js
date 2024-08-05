@@ -1,5 +1,4 @@
 import { Server } from "socket.io";
-import rclnodejs from 'rclnodejs';
 import express from "express";
 import http from "http";
 import DataRecorder from './modules/DataRecorder.js';
@@ -24,42 +23,11 @@ const generalRecorder = new DataRecorder(`./logs/${formattedDate}`, 'GeneralData
 
 var navbarData = { temperature: 0, humidity: 0, battery: 0, connection: 'waiting...' };
 var speedF = 30;
-var joystickData = { x: '0', y: '0', z: '0', 'plow': '0', 'speedF': speedF, 'turnType':  0};
+var joystickData = { x: '0', y: '0', z: '0' };
 
 let lastMessageTime = Date.now();
 const timeout = 2000; // 5 saniye
 
-// Global node reference
-let globalNode;
-
-
-async function initRclNode() {
-  await rclnodejs.init();
-  globalNode = rclnodejs.createNode('UI_Sensor_Subcriber');
-
-  // Subscriptions
-  globalNode.createSubscription('std_msgs/msg/String', 'temperature', (msg) => {
-    navbarData.temperature = msg.data;
-    sensorRecorder.recordTemperature(msg.data);
-    //console.log(`Received message: ${typeof msg}`, msg);
-  });
-
-  globalNode.createSubscription('std_msgs/msg/String', 'humidity', (msg) => {
-    navbarData.humidity = msg.data;
-    sensorRecorder.recordHumidity(msg.data);
-    //console.log(`Received message: ${typeof msg}`, msg);
-  });
-
-  globalNode.createSubscription('std_msgs/msg/String', 'battery', (msg) => {
-    navbarData.battery = msg.data;
-    lastMessageTime = Date.now();
-    sensorRecorder.recordBattery(msg.data);
-
-    //console.log(`Received message: ${typeof msg}`, msg);
-  });
-
-  rclnodejs.spin(globalNode);
-}
 
 io.on("connection", (socket) => {
   console.log("Baglanti kuruldu - server");
@@ -79,44 +47,40 @@ io.on("connection", (socket) => {
     joystickRecorder.recordJoystick(data);
     io.emit("Joystick", joystickData);
 
-    // Publisher
-    const publisher = globalNode.createPublisher('std_msgs/msg/String', 'joystickData');
-    publisher.publish({ data: JSON.stringify(joystickData) });
-
     console.log(joystickData);
   });
 
   socket.on("Stop", () => {
     console.log("Stop");
+    io.emit("Stop", "Stop");
     generalRecorder.recordData('Stop');
   });
 
   socket.on("autonomousDrive", (data) => {
     console.log(data);
+    io.emit("autonomousDrive", data);
     generalRecorder.recordData(`Autonomous Drive: ${data}`);
   });
 
   socket.on("autonomousState", (data) => {
     console.log(data);
+    io.emit("autonomousState", data);
     generalRecorder.recordData(`Autonomous State: ${data}`);
   });
 
   socket.on("turnType", (data) => {
-    console.log(data);
-    joystickData.turnType = data
     generalRecorder.recordData(`Turn Type: ${data}`);
   });
 
   socket.on("cameraSelect", (data) => {
     console.log(data);
+    io.emit("cameraSelect", data);
     generalRecorder.recordData(`Camera Select: ${data}`);
   });
 
   socket.on("speedFactor", (data) => {
-    speedF = data
-    joystickData.speedF = data
-    console.log(joystickData);
-    io.emit("Joystick", joystickData);
+    console.log(data);
+    io.emit("speedFactor", data);
     generalRecorder.recordData(`Speed Factor: ${data}`);
   });
 
@@ -125,9 +89,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("plow", (data) => {
-    joystickData.plow = data;
-    console.log(joystickData);
-    io.emit("Joystick", joystickData);
+    console.log(data);
+    io.emit("plow", data);
   });
 
   socket.on('executeCommand', (command) => {
@@ -162,28 +125,8 @@ io.on("connection", (socket) => {
   });
 });
 
-setInterval(() => {
-  io.emit("Navbar", navbarData);
-}, 1000);
-
-setInterval(() => {
-  if (Date.now() - lastMessageTime <= timeout) {
-    //console.log('Connected to ROS.');
-    navbarData.connection = 'Connected';
-  } else {
-    //console.log('No messages received. Connection might be lost.');
-    navbarData.connection = 'lost';
-
-  }
-}, 1000);
-
 io.listen(5000);
 
 server.listen(4000, () => {
   console.log("Server is running on port 5000");
-});
-
-// Initialize ROS 2 node
-initRclNode().catch((err) => {
-  console.error('Failed to initialize ROS 2 node:', err);
 });

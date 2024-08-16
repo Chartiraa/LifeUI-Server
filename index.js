@@ -2,8 +2,44 @@ import { Server } from "socket.io";
 import express from "express";
 import http from "http";
 import DataRecorder from './modules/DataRecorder.js';
-
+import ip from 'ip';
 import { Client } from "ssh2";
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+
+// ES module ortamında __dirname kullanımı
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Bir üst dizindeki LifeUI-React klasörüne erişim
+const parentDir = path.resolve(__dirname, '..');
+const envDir = path.join(parentDir, 'LifeUI-React');
+
+function saveToEnvFile(key, value) {
+  const envPath = path.join(envDir, '.env');
+  
+  // Eğer .env dosyası varsa mevcut içeriği yükle
+  let envConfig = {};
+  if (fs.existsSync(envPath)) {
+    envConfig = dotenv.parse(fs.readFileSync(envPath));
+  }
+  
+  // IP adresini güncelle veya ekle
+  envConfig[key] = value;
+  
+  // .env dosyasını güncelle
+  const envContent = Object.keys(envConfig)
+    .map(k => `${k}=${envConfig[k]}`)
+    .join('\n');
+  
+  fs.writeFileSync(envPath, envContent);
+  console.log(`IP address: ${value}`);
+}
+
+const localIPAddress = ip.address();
+saveToEnvFile('REACT_APP_LOCAL_IP_ADDRESS', `http://${localIPAddress}:5000`);
 
 const app = express();
 const server = http.createServer(app);
@@ -17,31 +53,36 @@ const io = new Server(server, {
 const date = new Date();
 const formattedDate = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()} -- ${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
 
-const sensorRecorder = new DataRecorder(`./logs/${formattedDate}`, 'SensorData.txt')
-const joystickRecorder = new DataRecorder(`./logs/${formattedDate}`, 'JoystickData.txt')
-const generalRecorder = new DataRecorder(`./logs/${formattedDate}`, 'GeneralData.txt')
+const sensorRecorder = new DataRecorder(`../LifeUI-React/src/logs/${formattedDate}`, 'SensorData.txt');
+const joystickRecorder = new DataRecorder(`../LifeUI-React/src/logs/${formattedDate}`, 'JoystickData.txt');
+const generalRecorder = new DataRecorder(`../LifeUI-React/src/logs/${formattedDate}`, 'GeneralData.txt');
 
 var navbarData = { temperature: 0, humidity: 0, battery: 0, connection: 'waiting...' };
 var speedF = 30;
 var joystickData = { x: '0', y: '0', z: '0' };
 
 let lastMessageTime = Date.now();
-const timeout = 2000; // 5 saniye
-
+const timeout = 2000; // 2 saniye
 
 io.on("connection", (socket) => {
-  console.log("Baglanti kuruldu - server");
+  console.log("Bağlantı kuruldu - server");
   console.log(socket.id);
+
+  socket.emit("ipAddress", ip.address());
+
+  socket.on("gps", (data) => {
+    io.emit("GPS", data);
+  });
 
   socket.on("Joystick", (data) => {
     if (data.x !== undefined && data.x !== null){
-      joystickData.x = data.x
+      joystickData.x = data.x;
     }
     if (data.y !== undefined && data.y !== null){
-      joystickData.y = data.y
+      joystickData.y = data.y;
     }
     if (data.z !== undefined && data.z !== null){
-      joystickData.z = data.z
+      joystickData.z = data.z;
     }
 
     joystickRecorder.recordJoystick(data);
@@ -128,5 +169,5 @@ io.on("connection", (socket) => {
 io.listen(5000);
 
 server.listen(4000, () => {
-  console.log("Server is running on port 5000");
+  console.log("Server is running on port 4000");
 });

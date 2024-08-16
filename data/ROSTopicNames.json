@@ -1,7 +1,0 @@
-[
-    {
-        "id": 1,
-        "name": "/battery",
-        "message_type": "std_msgs/String"
-    }
-]

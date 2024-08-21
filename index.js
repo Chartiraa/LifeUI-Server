@@ -8,6 +8,8 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
+import { SerialPort } from "serialport";
+import { ReadlineParser } from "@serialport/parser-readline";
 
 // ES module ortamında __dirname kullanımı
 const __filename = fileURLToPath(import.meta.url);
@@ -19,21 +21,21 @@ const envDir = path.join(parentDir, 'LifeUI-React');
 
 function saveToEnvFile(key, value) {
   const envPath = path.join(envDir, '.env');
-  
+
   // Eğer .env dosyası varsa mevcut içeriği yükle
   let envConfig = {};
   if (fs.existsSync(envPath)) {
     envConfig = dotenv.parse(fs.readFileSync(envPath));
   }
-  
+
   // IP adresini güncelle veya ekle
   envConfig[key] = value;
-  
+
   // .env dosyasını güncelle
   const envContent = Object.keys(envConfig)
     .map(k => `${k}=${envConfig[k]}`)
     .join('\n');
-  
+
   fs.writeFileSync(envPath, envContent);
   console.log(`IP address: ${value}`);
 }
@@ -48,6 +50,33 @@ const io = new Server(server, {
   cors: {
     origin: "*"
   }
+});
+
+const port = new SerialPort({
+  path: '/dev/ttyACM0',
+  baudRate: 115200,
+})
+
+const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
+
+// Bağlantı açıldığında çalışacak olan event
+port.on('open', () => {
+  console.log('Seri port açık');
+});
+
+// Veri alındığında çalışacak olan event
+parser.on('data', (data) => {
+  console.log('Gelen veri:', data);
+});
+
+// Seri port kapandığında çalışacak olan event
+port.on('close', () => {
+  console.log('Seri port kapandı');
+});
+
+// Hata oluştuğunda çalışacak olan event
+port.on('error', (err) => {
+  console.error('Seri port hatası:', err.message);
 });
 
 const date = new Date();
@@ -75,13 +104,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("Joystick", (data) => {
-    if (data.x !== undefined && data.x !== null){
+    if (data.x !== undefined && data.x !== null) {
       joystickData.x = data.x;
     }
-    if (data.y !== undefined && data.y !== null){
+    if (data.y !== undefined && data.y !== null) {
       joystickData.y = data.y;
     }
-    if (data.z !== undefined && data.z !== null){
+    if (data.z !== undefined && data.z !== null) {
       joystickData.z = data.z;
     }
 
@@ -164,6 +193,48 @@ io.on("connection", (socket) => {
       password: '236541'
     });
   });
+
+  //////////////////////////////////////////////
+
+  socket.on("lifeWidth", (data) => {
+    io.emit("lifeWidth", data);
+    console.log(data);
+  });
+
+  socket.on("lifeHeight", (data) => {
+    io.emit("lifeHeight", data);
+    console.log(data);
+  });
+
+  socket.on("gpsPosX", (data) => {
+    io.emit("gpsPosX", data);
+    console.log(data);
+  });
+
+  socket.on("gpsPosY", (data) => {
+    io.emit("gpsPosY", data);
+    console.log(data);
+  });
+
+  socket.on("turnRadius", (data) => {
+    io.emit("turnRadius", data);
+    console.log(data);
+  });
+
+  socket.on("initX", (data) => {
+    io.emit("initX", data);
+    console.log(data);
+  });
+
+  socket.on("depth", (data) => {
+    io.emit("depth", data);
+    console.log(data);
+  });
+
+  socket.on("gps_coord", (data) => {
+    console.log(data);
+  });
+
 });
 
 io.listen(5000);

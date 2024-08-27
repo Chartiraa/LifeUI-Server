@@ -154,7 +154,7 @@ io.on("connection", (socket) => {
     generalRecorder.recordData(`Speed Factor: ${data}`);
   });
 
-  socket.on("Load", (data) => {
+  socket.on("plowLoad", (data) => {
     io.emit("LoadUI", data);
   });
 
@@ -231,8 +231,23 @@ io.on("connection", (socket) => {
     console.log(data);
   });
 
-  socket.on("gps_coord", (data) => {
+  socket.on("heading", (data) => {
+    io.emit("heading", data);
     console.log(data);
+  });
+
+  socket.on("derivative_threshold", (data) => {
+    io.emit("derivative_threshold", data);
+    console.log(data);
+  });
+  socket.on("adc_threshold", (data) => {
+    io.emit("adc_threshold", data);
+    console.log(data);
+  });
+
+  socket.on("gps_coord", (data) => {
+    io.emit("gps_coord_ui", data);
+
   });
 
 });

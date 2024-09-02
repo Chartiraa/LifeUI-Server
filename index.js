@@ -247,7 +247,8 @@ io.on("connection", (socket) => {
 
   socket.on("gps_coord", (data) => {
     io.emit("gps_coord_ui", data);
-
+    generalRecorder.recordData(`GPS Coord: ${data}`);
+    console.log(data);
   });
 
 });

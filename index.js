@@ -8,32 +8,25 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
+import { Subscriber } from 'zeromq';
+import * as msgpack from '@msgpack/msgpack';
 
-// ES module ortamında __dirname kullanımı
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Bir üst dizindeki LifeUI-React klasörüne erişim
 const parentDir = path.resolve(__dirname, '..');
 const envDir = path.join(parentDir, 'LifeUI-React');
 
 function saveToEnvFile(key, value) {
   const envPath = path.join(envDir, '.env');
   
-  // Eğer .env dosyası varsa mevcut içeriği yükle
   let envConfig = {};
   if (fs.existsSync(envPath)) {
     envConfig = dotenv.parse(fs.readFileSync(envPath));
   }
   
-  // IP adresini güncelle veya ekle
   envConfig[key] = value;
-  
-  // .env dosyasını güncelle
-  const envContent = Object.keys(envConfig)
-    .map(k => `${k}=${envConfig[k]}`)
-    .join('\n');
-  
+  const envContent = Object.keys(envConfig).map(k => `${k}=${envConfig[k]}`).join('\n');
   fs.writeFileSync(envPath, envContent);
   console.log(`IP address: ${value}`);
 }
@@ -43,26 +36,43 @@ saveToEnvFile('REACT_APP_LOCAL_IP_ADDRESS', `http://${localIPAddress}:5000`);
 
 const app = express();
 const server = http.createServer(app);
+app.use(express.static(__dirname));
 
 const io = new Server(server, {
-  cors: {
-    origin: "*"
-  }
+  cors: { origin: "*" }
 });
 
-const date = new Date();
-const formattedDate = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()} -- ${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+const zmqSocket1 = new Subscriber();
+zmqSocket1.connect("tcp://192.168.1.24:5555"); 
+zmqSocket1.subscribe("");
 
-const sensorRecorder = new DataRecorder(`../LifeUI-React/src/logs/${formattedDate}`, 'SensorData.txt');
-const joystickRecorder = new DataRecorder(`../LifeUI-React/src/logs/${formattedDate}`, 'JoystickData.txt');
-const generalRecorder = new DataRecorder(`../LifeUI-React/src/logs/${formattedDate}`, 'GeneralData.txt');
+const zmqSocket2 = new Subscriber();
+zmqSocket2.connect("tcp://192.168.1.24:5556"); 
+zmqSocket2.subscribe("");
 
-var navbarData = { temperature: 0, humidity: 0, battery: 0, connection: 'waiting...' };
-var speedF = 30;
-var joystickData = { x: '0', y: '0', z: '0' };
+// İlk ZeroMQ bağlantısını dinleme (5555 portu)
+(async () => {
+  for await (const [msg] of zmqSocket1) {
+    try {
+      const data = JSON.parse(msg.toString());
+      io.emit("5555", data.image);  // İlk portun verisini gönder
+    } catch (error) {
+      console.error("Port 5555 - Veri çözme hatası:", error);
+    }
+  }
+})();
 
-let lastMessageTime = Date.now();
-const timeout = 2000; // 2 saniye
+// İkinci ZeroMQ bağlantısını dinleme (5556 portu)
+(async () => {
+  for await (const [msg] of zmqSocket2) {
+    try {
+      const data = JSON.parse(msg.toString());
+      io.emit("5556", data.image);  // İkinci portun verisini gönder
+    } catch (error) {
+      console.error("Port 5556 - Veri çözme hatası:", error);
+    }
+  }
+})();
 
 io.on("connection", (socket) => {
   console.log("Bağlantı kuruldu - server");

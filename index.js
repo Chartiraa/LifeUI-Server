@@ -8,8 +8,8 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
-import { Subscriber } from 'zeromq';
-import * as msgpack from '@msgpack/msgpack';
+import rclnodejs from 'rclnodejs';
+import sharp from "sharp";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,12 +19,12 @@ const envDir = path.join(parentDir, 'LifeUI-React');
 
 function saveToEnvFile(key, value) {
   const envPath = path.join(envDir, '.env');
-  
+
   let envConfig = {};
   if (fs.existsSync(envPath)) {
     envConfig = dotenv.parse(fs.readFileSync(envPath));
   }
-  
+
   envConfig[key] = value;
   const envContent = Object.keys(envConfig).map(k => `${k}=${envConfig[k]}`).join('\n');
   fs.writeFileSync(envPath, envContent);
@@ -42,142 +42,136 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-const zmqSocket1 = new Subscriber();
-zmqSocket1.connect("tcp://192.168.1.24:5555"); 
-zmqSocket1.subscribe("");
+async function startRosNode() {
+  await rclnodejs.init();
+  const node = new rclnodejs.Node("multi_camera_subscriber_node");
 
-const zmqSocket2 = new Subscriber();
-zmqSocket2.connect("tcp://192.168.1.24:5556"); 
-zmqSocket2.subscribe("");
+  // ROS 2 Publishers oluşturma
+  const gpsPublisher = node.createPublisher("std_msgs/msg/String", "/robot/gps");
+  const joystickPublisher = node.createPublisher("geometry_msgs/msg/Vector3", "/robot/joystick");
+  const stopPublisher = node.createPublisher("std_msgs/msg/String", "/robot/stop");
+  const autonomousDrivePublisher = node.createPublisher("std_msgs/msg/String", "/robot/autonomous_drive");
+  const autonomousStatePublisher = node.createPublisher("std_msgs/msg/String", "/robot/autonomous_state");
+  const turnTypePublisher = node.createPublisher("std_msgs/msg/String", "/robot/turn_type");
+  const cameraSelectPublisher = node.createPublisher("std_msgs/msg/String", "/robot/camera_select");
+  const speedFactorPublisher = node.createPublisher("std_msgs/msg/String", "/robot/speed_factor");
 
-// İlk ZeroMQ bağlantısını dinleme (5555 portu)
-(async () => {
-  for await (const [msg] of zmqSocket1) {
-    try {
-      const data = JSON.parse(msg.toString());
-      io.emit("5555", data.image);  // İlk portun verisini gönder
-    } catch (error) {
-      console.error("Port 5555 - Veri çözme hatası:", error);
-    }
-  }
-})();
+  io.on("connection", (socket) => {
+    console.log("Bağlantı kuruldu - server");
+    console.log(socket.id);
 
-// İkinci ZeroMQ bağlantısını dinleme (5556 portu)
-(async () => {
-  for await (const [msg] of zmqSocket2) {
-    try {
-      const data = JSON.parse(msg.toString());
-      io.emit("5556", data.image);  // İkinci portun verisini gönder
-    } catch (error) {
-      console.error("Port 5556 - Veri çözme hatası:", error);
-    }
-  }
-})();
+    socket.on("gps", (data) => {
+      const msg = { data };
+      gpsPublisher.publish(msg);
+    });
 
-io.on("connection", (socket) => {
-  console.log("Bağlantı kuruldu - server");
-  console.log(socket.id);
+    socket.on("Joystick", (data) => {
+      const msg = {
+        x: data.x || 0,
+        y: data.y || 0,
+        z: data.z || 0
+      };
+      joystickPublisher.publish(msg);
+    });
 
-  socket.emit("ipAddress", ip.address());
+    socket.on("Stop", () => {
+      const msg = { data: "Stop" };
+      stopPublisher.publish(msg);
+    });
 
-  socket.on("gps", (data) => {
-    io.emit("GPS", data);
-  });
+    socket.on("autonomousDrive", (data) => {
+      const msg = { data };
+      autonomousDrivePublisher.publish(msg);
+    });
 
-  socket.on("Joystick", (data) => {
-    if (data.x !== undefined && data.x !== null){
-      joystickData.x = data.x;
-    }
-    if (data.y !== undefined && data.y !== null){
-      joystickData.y = data.y;
-    }
-    if (data.z !== undefined && data.z !== null){
-      joystickData.z = data.z;
-    }
+    socket.on("autonomousState", (data) => {
+      const msg = { data };
+      autonomousStatePublisher.publish(msg);
+    });
 
-    joystickRecorder.recordJoystick(data);
-    io.emit("Joystick", joystickData);
+    socket.on("turnType", (data) => {
+      const msg = { data };
+      turnTypePublisher.publish(msg);
+    });
 
-    console.log(joystickData);
-  });
+    socket.on("cameraSelect", (data) => {
+      const msg = { data };
+      cameraSelectPublisher.publish(msg);
+    });
 
-  socket.on("Stop", () => {
-    console.log("Stop");
-    io.emit("Stop", "Stop");
-    generalRecorder.recordData('Stop');
-  });
-
-  socket.on("autonomousDrive", (data) => {
-    console.log(data);
-    io.emit("autonomousDrive", data);
-    generalRecorder.recordData(`Autonomous Drive: ${data}`);
-  });
-
-  socket.on("autonomousState", (data) => {
-    console.log(data);
-    io.emit("autonomousState", data);
-    generalRecorder.recordData(`Autonomous State: ${data}`);
-  });
-
-  socket.on("turnType", (data) => {
-    generalRecorder.recordData(`Turn Type: ${data}`);
-  });
-
-  socket.on("cameraSelect", (data) => {
-    console.log(data);
-    io.emit("cameraSelect", data);
-    generalRecorder.recordData(`Camera Select: ${data}`);
-  });
-
-  socket.on("speedFactor", (data) => {
-    console.log(data);
-    io.emit("speedFactor", data);
-    generalRecorder.recordData(`Speed Factor: ${data}`);
-  });
-
-  socket.on("Load", (data) => {
-    io.emit("LoadUI", data);
-  });
-
-  socket.on("plow", (data) => {
-    console.log(data);
-    io.emit("plow", data);
-  });
-
-  socket.on('executeCommand', (command) => {
-    generalRecorder.recordData(`Command: ${command}`);
-
-    const conn = new Client();
-    conn.on('ready', () => {
-      console.log('Client :: ready');
-      conn.exec(command, (err, stream) => {
-        if (err) {
-          socket.emit('commandOutput', `Error: ${err.message}`);
-          return;
-        }
-        let data = '';
-        stream.on('close', (code, signal) => {
-          console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-          conn.end();
-          socket.emit('commandOutput', data);
-          generalRecorder.recordData(`Output: ${data}`);
-        }).on('data', (chunk) => {
-          data += chunk;
-        }).stderr.on('data', (chunk) => {
-          data += chunk;
-        });
-      });
-    }).connect({
-      host: '192.168.122.171',
-      port: 22,
-      username: 'csa',
-      password: '236541'
+    socket.on("speedFactor", (data) => {
+      const msg = { data };
+      speedFactorPublisher.publish(msg);
     });
   });
-});
 
+  // Diğer ROS abonelik ve yayın işlemleri
+  const cameraSubscription = node.createSubscription(
+    "sensor_msgs/msg/Image",
+    "/zed/zed_node/rgb/image_rect_color",
+    async (msg) => {
+      const expectedSize = msg.width * msg.height * 4;
+      if (msg.data.length !== expectedSize) {
+        console.error(`Beklenen boyut: ${expectedSize}, ancak gelen boyut: ${msg.data.length}`);
+        return;
+      }
+      try {
+        const buffer = Buffer.from(msg.data);
+        for (let i = 0; i < buffer.length; i += 4) {
+          const b = buffer[i];
+          buffer[i] = buffer[i + 2];
+          buffer[i + 2] = b;
+        }
+        const jpegBuffer = await sharp(buffer, {
+          raw: { width: msg.width, height: msg.height, channels: 4 },
+        })
+          .removeAlpha()
+          .jpeg({ quality: 70 })
+          .toBuffer();
+        const base64Image = jpegBuffer.toString("base64");
+        const imageSrc = `data:image/jpeg;base64,${base64Image}`;
+        io.emit("camera_feed", imageSrc);
+      } catch (error) {
+        console.error("İşlenmemiş görüntüyü işlerken hata oluştu:", error);
+      }
+    }
+  );
+
+  const processedImageSubscription = node.createSubscription(
+    "sensor_msgs/msg/Image",
+    "/zedx/processed_image",
+    async (msg) => {
+      const expectedSize = msg.width * msg.height * 3;
+      if (msg.data.length !== expectedSize) {
+        console.error(`Beklenen boyut: ${expectedSize}, ancak gelen boyut: ${msg.data.length}`);
+        return;
+      }
+      try {
+        const buffer = Buffer.from(msg.data);
+        for (let i = 0; i < buffer.length; i += 3) {
+          const b = buffer[i];
+          buffer[i] = buffer[i + 2];
+          buffer[i + 2] = b;
+        }
+        const jpegBuffer = await sharp(buffer, {
+          raw: { width: msg.width, height: msg.height, channels: 3 },
+        })
+          .jpeg({ quality: 70 })
+          .toBuffer();
+        const base64Image = jpegBuffer.toString("base64");
+        const imageSrc = `data:image/jpeg;base64,${base64Image}`;
+        io.emit("processed_image_feed", imageSrc);
+      } catch (error) {
+        console.error("İşlenmiş görüntüyü işlerken hata oluştu:", error);
+      }
+    }
+  );
+
+  rclnodejs.spin(node);
+}
+
+startRosNode().catch(console.error);
 io.listen(5000);
-
 server.listen(4000, () => {
   console.log("Server is running on port 4000");
 });
